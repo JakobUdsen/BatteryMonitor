@@ -1,17 +1,21 @@
 const int voltagePin = A0;      // Pin for voltage measurement
 const int currentPin = A1;      // Pin for current measurement
-const int batteryCapacity = 5000;  // Battery capacity in mAh
 const int sampleInterval = 100;   // Sample interval in milliseconds
-const int sampleCount = 10;      // Number of samples per interval
 
 struct BatteryData {
+  int maxBatteryCapacity;
+  int batteryCapacityLost;
   int voltage;
+  int voltageMin;
+  int voltageMax;
   int current;
   int remainingCapacity;
   int remainingTime;
 };
 
 BatteryData batteryData;
+batteryData.maxBatteryCapacity = 5000;  // Maximum battery capacity in mAh
+batteryData.batteryCapacityLost = 0;    // Capacity lost in mAh
 unsigned long previousMillis = 0;
 const unsigned long interval = 1000;
 
@@ -20,32 +24,54 @@ int getCurrentSample() {
   return map(currentRaw, 0, 1023, 0, 5000) / 1000 - 5;
 }
 
-void setup() {
-  Serial.begin(9600);
+void updateBatteryData() {
+  int voltageRaw = analogRead(voltagePin);
+  batteryData.voltage = map(voltageRaw, 0, 1023, 0, 5000);
+  batteryData.voltageMin = min(batteryData.voltage, batteryData.voltageMin);
+  batteryData.voltageMax = max(batteryData.voltage, batteryData.voltageMax);
+  batteryData.current = getCurrentSample();
+  batteryData.remainingCapacity = batteryData.maxBatteryCapacity * (batteryData.voltage - 3700) / (4200 - 3700) - batteryData.batteryCapacityLost;
+  batteryData.remainingTime = batteryData.remainingCapacity / batteryData.current;
+
+  // Update the capacity lost
+  int currentRemainingCapacity = batteryData.maxBatteryCapacity * (batteryData.voltage - 3700) / (4200 - 3700);
+  batteryData.batteryCapacityLost = max(batteryData.batteryCapacityLost, batteryData.maxBatteryCapacity - currentRemainingCapacity);
 }
 
-void loop() {
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-    int voltageRaw = analogRead(voltagePin);
-    batteryData.voltage = map(voltageRaw, 0, 1023, 0, 5000) / 1000;
-    int currentSum = 0;
-    for (int i = 0; i < sampleCount; i++) {
-      currentSum += getCurrentSample();
-      delay(sampleInterval);
-    }
-    batteryData.current = currentSum / sampleCount;
-    batteryData.remainingCapacity = batteryCapacity * (batteryData.voltage - 3.7) / (4.2 - 3.7);
-    batteryData.remainingTime = batteryData.remainingCapacity / batteryData.current;
+void serialPrintBatteryData(unsigned long printInterval, bool printEnabled) {
+  static unsigned long previousPrintMillis = 0;
+  unsigned long currentPrintMillis = millis();
+  if (printEnabled && currentPrintMillis - previousPrintMillis >= printInterval) {
+    previousPrintMillis = currentPrintMillis;
     Serial.print("Voltage: ");
     Serial.print(batteryData.voltage);
-    Serial.print("V, Current: ");
+    Serial.print("mV, Voltage Min: ");
+    Serial.print(batteryData.voltageMin);
+    Serial.print("mV, Voltage Max: ");
+    Serial.print(batteryData.voltageMax);
+    Serial.print("mV, Current: ");
     Serial.print(batteryData.current);
     Serial.print("A, Remaining Capacity: ");
     Serial.print(batteryData.remainingCapacity);
     Serial.print("mAh, Remaining Time: ");
     Serial.print(batteryData.remainingTime);
     Serial.println("h");
+  }
+}
+
+
+void setup() {
+  Serial.begin(9600);
+  batteryData.voltageMin = 5000;
+  batteryData.voltageMax = 0;
+}
+
+void loop() {
+  static unsigned long previousMillis = 0;
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    updateBatteryData();
+    serialPrintBatteryData(interval, true);
   }
 }
