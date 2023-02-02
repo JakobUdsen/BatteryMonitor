@@ -57,4 +57,26 @@ You may consider using a library or API that provides support for CAN-bus commun
 
 
 
-onfiguration of battery type, voltage, Ah capacity, number of batteries in pack, log intervals, CAN-bus  (11bit) transmit ID and transmission intervals, needs to be stored on the SD-card as a configuration file. Also SD-card will contain an event log with timestamps. Time will be kept by a RTC-module.
+To store the configuration information for the battery health monitoring system and keep an event log with timestamps, you could add the following steps to the program:
+
+Initialization: Set up the voltage and current sensor, shunt resistor, CAN-bus, SD card, and RTC module.
+
+Read Configuration: Check if a configuration file exists on the SD card and read the information if it does. If no configuration file exists, prompt the user to enter the necessary information, such as battery type, voltage, Ah capacity, number of batteries in the pack, log intervals, CAN-bus transmit ID, and transmission intervals.
+
+Write Configuration: Store the configuration information in a file on the SD card.
+
+Read Values: Continuously read the voltage, current, temperature, and time values.
+
+Calculate SOC: Use the voltage and capacity of the battery to calculate the state of charge (SOC).
+
+Calculate Remaining Capacity: Use the current and time values to calculate the remaining capacity of the battery pack.
+
+Determine Health: Use the voltage, current, temperature, and SOC values to determine the health of the battery pack and each individual battery.
+
+Output Data: Package the data in a CAN-bus message and transmit it at the specified intervals.
+
+Store Log: Save the data to an SD card as a log for later analysis, including a timestamp from the RTC module.
+
+Store Events: Log any significant events, such as low battery voltage or over-temperature conditions, to the SD card with a timestamp from the RTC module.
+
+By storing the configuration information on the SD card and keeping an event log with timestamps, you can easily track the performance and health of the battery pack over time and make any necessary adjustments to the monitoring system.
